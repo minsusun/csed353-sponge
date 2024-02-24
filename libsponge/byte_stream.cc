@@ -29,7 +29,7 @@ string ByteStream::peek_output(const size_t len) const {
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
-void ByteStream::pop_output(const size_t len) { 
+void ByteStream::pop_output(const size_t len) {
     size_t size = len > this->buffer_size() ? this->buffer_size() : len;
     this->_buffer = this->_buffer.substr(size, this->buffer_size());
     this->_bytes_read += size;

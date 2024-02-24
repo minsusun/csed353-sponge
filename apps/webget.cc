@@ -17,7 +17,7 @@ void get_URL(const string &host, const string &path) {
     socket.write("Connection: close\r\n");
     socket.write("\r\n");
 
-    while(!socket.eof()) {
+    while (!socket.eof()) {
         const string msg = socket.read();
         cout << msg;
     }

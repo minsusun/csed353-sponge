@@ -28,8 +28,14 @@ class ByteStream {
 
     // Private Methods
 
-    void _pop(const size_t size);
-    std::string _peek(const size_t size) const;
+    //! \returns the maximum available number of bytes that can be read from the output side of the buffer
+    inline size_t _available_output(const size_t len) const;
+
+    //! \param[in] size bytes will be removed from the output side of the buffer exactly
+    inline void _pop(const size_t size);
+
+    //! \param[in] size bytes will be copied from the output side of the buffer exactly
+    inline std::string _peek(const size_t size) const;
 
   public:
     //! Construct a stream with room for `capacity` bytes.

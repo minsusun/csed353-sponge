@@ -19,13 +19,13 @@ size_t ByteStream::write(const string &data) {
     size_t size = data.size() > this->remaining_capacity() ? this->remaining_capacity() : data.size();
     this->_buffer += data.substr(0, size);
     this->_bytes_written += size;
-    return {size};
+    return size;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
     size_t size = len > this->buffer_size() ? this->buffer_size() : len;
-    return {this->_buffer.substr(0, size)};
+    return this->_buffer.substr(0, size);
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
@@ -43,21 +43,21 @@ std::string ByteStream::read(const size_t len) {
     const string data = this->peek_output(size);
     this->pop_output(size);
     this->_bytes_read += size;
-    return {data};
+    return data;
 }
 
 void ByteStream::end_input() { _input_ended = true; }
 
-bool ByteStream::input_ended() const { return {this->_input_ended}; }
+bool ByteStream::input_ended() const { return this->_input_ended; }
 
-size_t ByteStream::buffer_size() const { return {this->_buffer.size()}; }
+size_t ByteStream::buffer_size() const { return this->_buffer.size(); }
 
-bool ByteStream::buffer_empty() const { return {this->_buffer.empty()}; }
+bool ByteStream::buffer_empty() const { return this->_buffer.empty(); }
 
 bool ByteStream::eof() const { return this->buffer_empty() && this->input_ended(); }
 
-size_t ByteStream::bytes_written() const { return {this->_bytes_written}; }
+size_t ByteStream::bytes_written() const { return this->_bytes_written; }
 
-size_t ByteStream::bytes_read() const { return {this->_bytes_read}; }
+size_t ByteStream::bytes_read() const { return this->_bytes_read; }
 
-size_t ByteStream::remaining_capacity() const { return {_capacity - this->buffer_size()}; }
+size_t ByteStream::remaining_capacity() const { return _capacity - this->buffer_size(); }

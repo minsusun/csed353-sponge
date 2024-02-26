@@ -26,6 +26,11 @@ class ByteStream {
 
     bool _error{};  //!< Flag indicating that the stream suffered an error.
 
+    // Private Methods
+
+    void _pop(const size_t size);
+    std::string _peek(const size_t size) const;
+
   public:
     //! Construct a stream with room for `capacity` bytes.
     ByteStream(const size_t capacity);

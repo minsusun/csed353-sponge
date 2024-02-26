@@ -12,6 +12,13 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
+void ByteStream::_pop(const size_t size) {
+    this->_buffer = this->_buffer.substr(size, this->buffer_size());
+    this->_bytes_read += size;
+}
+
+string ByteStream::_peek(const size_t size) const { return this->_buffer.substr(0, size); }
+
 ByteStream::ByteStream(const size_t capacity)
     : _capacity(capacity), _bytes_written(0), _bytes_read(0), _input_ended(false), _buffer(""), _error(false) {}
 
@@ -25,14 +32,13 @@ size_t ByteStream::write(const string &data) {
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
     size_t size = len > this->buffer_size() ? this->buffer_size() : len;
-    return this->_buffer.substr(0, size);
+    return this->_peek(size);
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) {
     size_t size = len > this->buffer_size() ? this->buffer_size() : len;
-    this->_buffer = this->_buffer.substr(size, this->buffer_size());
-    this->_bytes_read += size;
+    this->_pop(size);
 }
 
 //! Read (i.e., copy and then pop) the next "len" bytes of the stream
@@ -40,9 +46,8 @@ void ByteStream::pop_output(const size_t len) {
 //! \returns a string
 std::string ByteStream::read(const size_t len) {
     size_t size = len > this->buffer_size() ? this->buffer_size() : len;
-    const string data = this->peek_output(size);
-    this->pop_output(size);
-    this->_bytes_read += size;
+    const string data = this->_peek(size);
+    this->_pop(size);
     return data;
 }
 

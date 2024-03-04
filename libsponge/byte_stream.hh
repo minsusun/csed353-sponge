@@ -11,6 +11,13 @@
 class ByteStream {
   private:
     // Your code here -- add private members as necessary.
+    size_t _capacity;
+    size_t _bytes_written;
+    size_t _bytes_read;
+
+    bool _input_ended;
+
+    std::string _buffer;
 
     // Hint: This doesn't need to be a sophisticated data structure at
     // all, but if any of your tests are taking longer than a second,
@@ -18,6 +25,17 @@ class ByteStream {
     // different approaches.
 
     bool _error{};  //!< Flag indicating that the stream suffered an error.
+
+    // Private Methods
+
+    //! \returns the maximum available number of bytes that can be read from the output side of the buffer
+    inline size_t _available_output(const size_t len) const;
+
+    //! \param[in] size bytes will be removed from the output side of the buffer exactly
+    inline void _pop(const size_t size);
+
+    //! \param[in] size bytes will be copied from the output side of the buffer exactly
+    inline std::string _peek(const size_t size) const;
 
   public:
     //! Construct a stream with room for `capacity` bytes.

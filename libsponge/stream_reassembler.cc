@@ -13,9 +13,13 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 using namespace std;
 
 inline void StreamReassembler::_fetchAssembled() {
-    for (_assembled_iterator = _buffer.begin(); _assembled_iterator != _buffer.end() && _assembled_cursor > (*_assembled_iterator).first; _assembled_iterator++);
+    for (_assembled_iterator = _buffer.begin();
+         _assembled_iterator != _buffer.end() && _assembled_cursor > (*_assembled_iterator).first;
+         _assembled_iterator++)
+        ;
     for (; _assembled_iterator != _buffer.end() && _assembled_cursor == (*_assembled_iterator).first;
-         _assembled_iterator++, _assembled_cursor++, _unassembled_bytes--);
+         _assembled_iterator++, _assembled_cursor++, _unassembled_bytes--)
+        ;
 }
 
 inline void StreamReassembler::_pushAssembled() {
@@ -57,7 +61,8 @@ StreamReassembler::StreamReassembler(const size_t capacity)
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
-    if(data.empty() && eof) _eof = true;
+    if (data.empty() && eof)
+        _eof = true;
 
     uint64_t pos = index;
     for (auto it = data.begin(); it != data.end(); it++) {
@@ -70,21 +75,24 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         }
 
         if (_buffer.find(pos) == _buffer.end()) {
-            if (_buffer_size >= _capacity) break;
+            if (_buffer_size >= _capacity)
+                break;
 
-            if (_buffer_size == _capacity - 1 && pos != _assembled_cursor) break;
+            if (_buffer_size == _capacity - 1 && pos != _assembled_cursor)
+                break;
 
             _buffer_size++, _unassembled_bytes++;
         }
 
-        if(next(it) == data.end() && eof) _eof = true;
+        if (next(it) == data.end() && eof)
+            _eof = true;
 
         _buffer[pos++] = string(it, next(it));
 
         // when buffer is full
         // if (_buffer_size >= _capacity) break;
 
-        // if (_buffer_size == _capacity - 1 && pos != _assembled_cursor) break; 
+        // if (_buffer_size == _capacity - 1 && pos != _assembled_cursor) break;
 
         // if(next(it) == data.end() && eof) _eof = true;
 
@@ -94,7 +102,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
         //     pos++;
         //     continue;
         // }
-            
+
         // // index not existed
         // if (_buffer.find(pos) == _buffer.end()) _buffer_size++, _unassembled_bytes++;
         // _buffer[pos++] = string(it, next(it));

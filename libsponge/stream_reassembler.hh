@@ -4,7 +4,6 @@
 #include "byte_stream.hh"
 
 #include <cstdint>
-#include <iostream>
 #include <map>
 #include <string>
 
@@ -13,19 +12,20 @@
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-    std::map<uint64_t, std::string> _buffer;
-    std::map<uint64_t, std::string>::iterator _assembled_iterator;
-    size_t _buffer_size;
-    size_t _assembled_cursor;
-    size_t _unassembled_bytes;
-    bool _eof;
+    std::map<uint64_t, std::string> _buffer;  // data structure to store segments
+    std::map<uint64_t, std::string>::iterator
+        _assembled_iterator;    // iterator indicating the first unassembled segments
+    size_t _buffer_size;        // current buffer size
+    size_t _assembled_cursor;   // index of the first unassembled segments
+    size_t _unassembled_bytes;  // size of unassembled bytes in stream
+    bool _eof;                  // eof
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
 
-    inline void _fetchAssembled();
-    inline void _pushAssembled();
-    inline void _pushAssembledAll();
+    inline void _fetchAssembled();    // update _assembled_iterator
+    inline void _pushAssembled();     // push one byte to bytestream from front of buffer
+    inline void _pushAssembledAll();  // push all bytes available from front of buffer
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

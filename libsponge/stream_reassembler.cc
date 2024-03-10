@@ -23,7 +23,6 @@ inline void StreamReassembler::_pushAssembled() {
         if (_output.buffer_size() >= _capacity)
             break;
         else {
-            cout << "!" << (*it).first << " " << (*it).second << endl;
             _output.write((*it).second);
             it = _buffer.erase(it);
             _buffer_size--;
@@ -37,7 +36,6 @@ inline void StreamReassembler::_pushAssembledAll() {
         if (_output.buffer_size() >= _capacity)
             break;
         else {
-            cout << "!" << (*it).first << " " << (*it).second << endl;
             _output.write((*it).second);
             it = _buffer.erase(it);
             _buffer_size--;
@@ -59,10 +57,6 @@ StreamReassembler::StreamReassembler(const size_t capacity)
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
-    cout << data.size() << " " << index << " " << eof << endl;
-    cout << _assembled_cursor << endl;
-    cout << _eof << endl;
-    
     if(data.empty() && eof) _eof = true;
 
     uint64_t pos = index;
@@ -82,7 +76,7 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
 
             _buffer_size++, _unassembled_bytes++;
         }
-        
+
         if(next(it) == data.end() && eof) _eof = true;
 
         _buffer[pos++] = string(it, next(it));
@@ -114,8 +108,6 @@ void StreamReassembler::push_substring(const string &data, const uint64_t index,
 
     if (_eof && empty())
         _output.end_input();
-    cout << _buffer_size << endl;
-    cout << _output.input_ended() << endl;
 }
 
 size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes; }

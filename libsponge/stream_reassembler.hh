@@ -3,6 +3,8 @@
 
 #include "byte_stream.hh"
 
+#include <iostream>
+
 #include <cstdint>
 #include <string>
 
@@ -25,6 +27,7 @@ class StreamReassembler {
 
     inline void _fetchAssembled();
     inline void _pushAssembled();
+    inline void _pushAssembledAll();
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

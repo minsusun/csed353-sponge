@@ -12,14 +12,6 @@
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-    std::map<uint64_t, std::string> _buffer;  // data structure to store segments
-    std::map<uint64_t, std::string>::iterator
-        _assembled_iterator;    // iterator indicating the first unassembled segments
-    size_t _buffer_size;        // current buffer size
-    size_t _assembled_cursor;   // index of the first unassembled segments
-    size_t _unassembled_bytes;  // size of unassembled bytes in stream
-    bool _eof;                  // eof
-
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
 

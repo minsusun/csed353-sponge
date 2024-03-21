@@ -8,107 +8,68 @@
 // You will need to add private members to the class declaration in `stream_reassembler.hh`
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
-inline void StreamReassembler::_fetchAssembled() {  // fetch assembled iterator to the end of assembled bytes
-    for (_assembled_iterator = _buffer.begin();
-         _assembled_iterator != _buffer.end() && _assembled_cursor > (*_assembled_iterator).first;
-         _assembled_iterator++)
-        ;
-    for (; _assembled_iterator != _buffer.end() && _assembled_cursor == (*_assembled_iterator).first;
-         _assembled_iterator++, _assembled_cursor++, _unassembled_bytes--)
-        ;
-}
-
-inline void StreamReassembler::_pushAssembled() {  // push single byte
-    for (auto it = _buffer.begin(); it != _assembled_iterator;) {
-        if (_output.buffer_size() >= _capacity)
-            break;
-        else {
-            _output.write((*it).second);
-            it = _buffer.erase(it);
-            _buffer_size--;
-            break;
-        }
-    }
-}
-
-inline void StreamReassembler::_pushAssembledAll() {
-    for (auto it = _buffer.begin(); it != _assembled_iterator;) {
-        if (_output.buffer_size() >= _capacity)
-            break;
-        else {
-            _output.write((*it).second);
-            it = _buffer.erase(it);
-            _buffer_size--;
-        }
-    }
-}
-
 StreamReassembler::StreamReassembler(const size_t capacity)
-    : _buffer()
-    , _assembled_iterator(_buffer.begin())
-    , _buffer_size(0)
-    , _assembled_cursor(0)
+    : _output(capacity)
+    , _capacity(capacity)
     , _unassembled_bytes(0)
     , _eof(false)
-    , _output(capacity)
-    , _capacity(capacity) {}
+    , _buffer(capacity, ' ')
+    , _state(capacity, false) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const uint64_t index, const bool eof) {
-    // unable eof when data is empty
-    if (data.empty() && eof)
-        _eof = true;
+    const uint64_t first_unread = _output.bytes_read();
+    const uint64_t first_unassmbled = _output.bytes_written();
 
-    uint64_t pos = index;
-    for (auto it = data.begin(); it != data.end(); it++) {
-        // parts where already gone
-        if (pos < _output.bytes_written()) {
-            pos++;
+    // Determine we reach the end of data and if it is fetch the eof
+    if (index + data.length() <= first_unread + this->_capacity && eof)
+        this->_eof = true;
+
+    // Write and update data into buffer
+    for (uint64_t data_index = 0; data_index < data.length(); data_index++) {
+        const uint64_t buffer_index = data_index + index - first_unassmbled;
+
+        if (data_index + index < first_unassmbled)
             continue;
+
+        if (buffer_index >= this->_output.remaining_capacity())
+            break;
+
+        if (!this->_state[buffer_index]) {
+            this->_state[buffer_index] = true;
+            this->_unassembled_bytes++;
         }
 
-        // currnet part of segment does not exist in stream
-        if (_buffer.find(pos) == _buffer.end()) {
-            // when unable to append
-            if (_buffer_size >= _capacity)
-                break;
-
-            // prevent stream being stuck
-            if (_buffer_size == _capacity - 1 && pos != _assembled_cursor)
-                break;
-
-            // update buffer size and unassembled bytes
-            _buffer_size++, _unassembled_bytes++;
-        }
-
-        // check eof
-        // once eof has set, it cannot be changed
-        if (next(it) == data.end() && eof)
-            _eof = true;
-
-        // append(update) part of segment
-        // latter part of input overlaps the segments
-        _buffer[pos++] = string(it, next(it));
-
-        // fetch assembled iterator to new assembled data and try to push assembled data
-        _fetchAssembled();
-        _pushAssembled();
+        this->_buffer[buffer_index] = data[data_index];
     }
 
-    // push all the part of segments available
-    _pushAssembledAll();
+    // Retrieve the data from buffer
+    string ret;
+    while (this->_state.front() && ret.length() < this->_output.remaining_capacity()) {
+        ret += this->_buffer.front();
 
-    // end the input of bytestream
-    if (_eof && empty())
-        _output.end_input();
+        this->_buffer.pop_front();
+        this->_state.pop_front();
+
+        this->_buffer.push_back(' ');
+        this->_state.push_back(false);
+    }
+
+    // Write data to bytestream
+    this->_output.write(ret);
+    this->_unassembled_bytes -= ret.length();
+
+    // Determine end_input
+    if (this->_eof && this->empty())
+        this->_output.end_input();
 }
 
-size_t StreamReassembler::unassembled_bytes() const { return _unassembled_bytes; }
+size_t StreamReassembler::unassembled_bytes() const { return this->_unassembled_bytes; }
 
-bool StreamReassembler::empty() const { return _buffer_size == 0; }
+bool StreamReassembler::empty() const { return this->unassembled_bytes() == 0; }

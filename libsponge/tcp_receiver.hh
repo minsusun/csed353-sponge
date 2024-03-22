@@ -20,12 +20,19 @@ class TCPReceiver {
     //! The maximum number of bytes we'll store.
     size_t _capacity;
 
+    bool _is_syn;
+    bool _is_fin;
+    
+    WrappingInt32 _isn;
+
+    uint64_t _first_unassembled() const { return this->stream_out().bytes_written(); };
+
   public:
     //! \brief Construct a TCP receiver
     //!
     //! \param capacity the maximum number of bytes that the receiver will
     //!                 store in its buffers at any give time.
-    TCPReceiver(const size_t capacity) : _reassembler(capacity), _capacity(capacity) {}
+    TCPReceiver(const size_t capacity) : _reassembler(capacity), _capacity(capacity), _is_syn(false), _is_fin(false), _isn(0) {}
 
     //! \name Accessors to provide feedback to the remote TCPSender
     //!@{

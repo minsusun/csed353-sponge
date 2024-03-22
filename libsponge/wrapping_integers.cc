@@ -29,6 +29,14 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    const uint64_t lower_32 = n.raw_value() - isn.raw_value();
+    const uint64_t upper_32 = (checkpoint - lower_32) >> 32;
+
+    if(checkpoint <= lower_32) return lower_32;
+
+    const uint64_t low = (upper_32 << 32) | lower_32;
+    const uint64_t high = ((upper_32 + 1) << 32) | lower_32;
+
+    if(checkpoint - low >= high - checkpoint) return high;
+    else return low;
 }

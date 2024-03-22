@@ -20,12 +20,14 @@ class TCPReceiver {
     //! The maximum number of bytes we'll store.
     size_t _capacity;
 
-    bool _is_syn;
-    bool _is_fin;
+    bool _is_syn;   //! flag SYN received
+    bool _is_fin;   //! flag FIN received
     
-    WrappingInt32 _isn;
+    WrappingInt32 _isn;   //! initial sequence number in WrappingInt32 object
 
-    uint64_t _first_unassembled() const { return this->stream_out().bytes_written(); };
+    //! \brief Location of first unassembled data
+    //! \return index of first unassembled data in stream omitting SYN
+    inline uint64_t _first_unassembled() const { return this->stream_out().bytes_written(); };
 
   public:
     //! \brief Construct a TCP receiver

@@ -48,7 +48,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         // Exponential Backoff
         // Do only when window size of stream is not zero
         if (this->_window_size > 0) {
-            this->_consecutive_retransmission++;    // Keep track of consecutive retransmission
+            this->_consecutive_retransmissions++;    // Keep track of consecutive retransmission
             this->_retransmission_timeout <<= 1;
         }
         
@@ -56,7 +56,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     }
 }
 
-unsigned int TCPSender::consecutive_retransmissions() const { return this->_consecutive_retransmission; }
+unsigned int TCPSender::consecutive_retransmissions() const { return this->_consecutive_retransmissions; }
 
 void TCPSender::send_empty_segment() {
     TCPSegment segment;

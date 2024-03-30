@@ -35,7 +35,7 @@ class TCPSender {
 
     uint64_t _timer_elapsed{0};
 
-    uint64_t _consecutive_retransmission{0};
+    uint64_t _consecutive_retransmissions{0};
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;

@@ -20,6 +20,7 @@ using namespace std;
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
+    , _retransmission_timeout(retx_timeout)
     , _stream(capacity) {}
 
 size_t TCPSender::bytes_in_flight() const { return {}; }
@@ -31,8 +32,30 @@ void TCPSender::fill_window() {}
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { DUMMY_CODE(ackno, window_size); }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void TCPSender::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
+void TCPSender::tick(const size_t ms_since_last_tick) {
+    // Ignore when timer is not activated
+    if (!this->_is_timer_on)
+        return;
+    
+    // Update elapsed time
+    this->_timer_elapsed += ms_since_last_tick;
 
-unsigned int TCPSender::consecutive_retransmissions() const { return {}; }
+    if (this->_timer_elapsed >= this->_retransmission_timeout) {
+        const TCPSegment segment = this->_outstanding_segments.front();
+        
+        this->_segments_out.push(segment);
+        
+        // Exponential Backoff
+        // Do only when window size of stream is not zero
+        if (this->_window_size > 0) {
+            this->_consecutive_retransmission++;    // Keep track of consecutive retransmission
+            this->_retransmission_timeout <<= 1;
+        }
+        
+        this->_timer_elapsed = 0;
+    }
+}
+
+unsigned int TCPSender::consecutive_retransmissions() const { return this->_consecutive_retransmission; }
 
 void TCPSender::send_empty_segment() {}

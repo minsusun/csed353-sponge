@@ -23,7 +23,7 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _retransmission_timeout(retx_timeout)
     , _stream(capacity) {}
 
-size_t TCPSender::bytes_in_flight() const { return {}; }
+size_t TCPSender::bytes_in_flight() const { return this->_next_seqno - this->_current_seqno; }
 
 void TCPSender::fill_window() {}
 

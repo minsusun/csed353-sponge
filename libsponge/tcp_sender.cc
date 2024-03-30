@@ -29,7 +29,38 @@ void TCPSender::fill_window() {}
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)
 //! \param window_size The remote receiver's advertised window size
-void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { DUMMY_CODE(ackno, window_size); }
+void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
+    // Retreive absolute ack number from ackno
+    const uint64_t absolute_ackno = unwrap(ackno, this->_isn, this->_next_seqno);
+
+    // Update for only available absolute ackno
+    if (absolute_ackno <= this->_next_seqno) {
+        // Update _current_seqno & _window_size
+        this->_current_seqno = max(this->_current_seqno, absolute_ackno);
+        this->_window_size = window_size;
+
+        // Ignore when timer is off
+        if (!this->_is_timer_on)
+            return;
+
+        // Pop acked segments from outstanding segments queue
+        while (!this->_outstanding_segments.empty()) {
+            const TCPSegment segment = this->_outstanding_segments.front();
+            
+            if (unwrap(segment.header().seqno, this->_isn, this->_next_seqno) > absolute_ackno)
+                break;
+
+            // Reset timer when the first outstanding segment is acked, which is about to be pop
+            this->_retransmission_timeout = this->_initial_retransmission_timeout;
+            this->_consecutive_retransmissions = 0;
+            this->_timer_elapsed = 0;
+
+            this->_outstanding_segments.pop();
+        }
+    }
+
+    this->fill_window();
+}
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {

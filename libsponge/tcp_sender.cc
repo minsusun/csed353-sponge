@@ -37,7 +37,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     if (absolute_ackno <= this->_next_seqno) {
         // Update _current_seqno & _window_size
         this->_current_seqno = max(this->_current_seqno, absolute_ackno);
-        this->_window_size = window_size;
+        this->_receiver_window_size = window_size;
 
         // Ignore when timer is off
         if (!this->_is_timer_on)
@@ -78,7 +78,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         
         // Exponential Backoff
         // Do only when window size of stream is not zero
-        if (this->_window_size > 0) {
+        if (this->_receiver_window_size > 0) {
             this->_consecutive_retransmissions++;    // Keep track of consecutive retransmission
             this->_retransmission_timeout <<= 1;
         }

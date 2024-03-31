@@ -21,7 +21,8 @@ class TCPSender {
     WrappingInt32 _isn;
 
     //! window size of stream
-    uint16_t _window_size{0};
+    uint16_t _window_size{1};
+    uint16_t _receiver_window_size{1};
 
     //! outbound queue of segments that the TCPSender wants sent
     std::queue<TCPSegment> _segments_out{};
@@ -39,6 +40,9 @@ class TCPSender {
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
+
+    //! flags for current connection
+    bool _fin{false};
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _current_seqno{0};

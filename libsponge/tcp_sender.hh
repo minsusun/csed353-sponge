@@ -21,8 +21,8 @@ class TCPSender {
     WrappingInt32 _isn;
 
     //! window size of stream
-    uint16_t _window_size{1};
-    uint16_t _receiver_window_size{1};
+    uint16_t _window_size{1};             // window size of the sender
+    uint16_t _receiver_window_size{1};    // window size of receiver
 
     //! outbound queue of segments that the TCPSender wants sent
     std::queue<TCPSegment> _segments_out{};

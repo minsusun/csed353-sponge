@@ -36,7 +36,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     // Update for only available absolute ackno
     if (absolute_ackno <= this->_next_seqno) {
         // Update _current_seqno & _window_size
-        this->_current_seqno = max(this->_current_seqno, absolute_ackno);
+        // this->_current_seqno = max(this->_current_seqno, absolute_ackno);
+        this->_current_seqno = absolute_ackno;      // no need for max(_current_seqno, abs_ackno) comparison
         this->_receiver_window_size = window_size;
 
         // Ignore when timer is off

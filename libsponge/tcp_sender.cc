@@ -59,6 +59,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         }
     }
 
+    if (this->bytes_in_flight() == 0)
+        this->_is_timer_on = false;
+
     this->fill_window();
 }
 

@@ -25,7 +25,16 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
 
 size_t TCPSender::bytes_in_flight() const { return this->_next_seqno - this->_current_seqno; }
 
-void TCPSender::fill_window() {}
+void TCPSender::fill_window() {
+    // Shortcut for TCPConfig::MAX_PAYLOAD_SIZE
+    const size_t &MAX_PAYLOAD_SIZE = TCPConfig::MAX_PAYLOAD_SIZE;
+
+    // current state of SYN & FIN flag which is needed to be transfered
+    const bool syn = this->_next_seqno == 0;
+    const bool fin = this->_stream.input_ended() && this->_fin;
+
+
+}
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)
 //! \param window_size The remote receiver's advertised window size
@@ -36,8 +45,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     // Update for only available absolute ackno
     if (absolute_ackno <= this->_next_seqno) {
         // Update _current_seqno & _window_size
-        // this->_current_seqno = max(this->_current_seqno, absolute_ackno);
-        this->_current_seqno = absolute_ackno;      // no need for max(_current_seqno, abs_ackno) comparison
+        this->_current_seqno = max(this->_current_seqno, absolute_ackno);
         this->_receiver_window_size = window_size;
 
         // Ignore when timer is off

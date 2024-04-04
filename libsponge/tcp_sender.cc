@@ -52,7 +52,7 @@ void TCPSender::fill_window() {
         header.fin = index == num_segments - 1 && reach_fin;
         header.seqno = wrap(this->_next_seqno, this->_isn);
 
-        const size_t size = (index == num_segments - 1) ? actual_payload_size % MAX_PAYLOAD_SIZE : MAX_PAYLOAD_SIZE;
+        const size_t size = (index == num_segments - 1) ? actual_payload_size - MAX_PAYLOAD_SIZE * index : MAX_PAYLOAD_SIZE;
         payload = Buffer(this->stream_in().read(size));
 
         this->_next_seqno += segment.length_in_sequence_space();
@@ -90,7 +90,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         while (!this->_outstanding_segments.empty()) {
             const TCPSegment segment = this->_outstanding_segments.front();
             
-            if (unwrap(segment.header().seqno, this->_isn, this->_next_seqno) > absolute_ackno)
+            if (unwrap(segment.header().seqno, this->_isn, this->_next_seqno) + segment.length_in_sequence_space() > this->_current_seqno)
                 break;
 
             // Reset timer when the first outstanding segment is acked, which is about to be pop

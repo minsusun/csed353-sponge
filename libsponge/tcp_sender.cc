@@ -31,16 +31,16 @@ void TCPSender::fill_window() {
 
     // current state of SYN & FIN flag which is needed to be transfered
     const bool has_syn = this->_next_seqno == 0;
-    const bool has_fin = this->_stream.input_ended() && this->_fin;
+    const bool has_fin = this->_stream.input_ended() && !this->_fin;
 
     const size_t total_window_size = has_syn + this->stream_in().buffer_size() + has_fin;
 
     const bool reach_fin = has_fin && this->_window_size >= total_window_size;
 
-    const size_t actual_window_size = max(total_window_size, static_cast<size_t>(this->_window_size));
+    const size_t actual_window_size = min(total_window_size, static_cast<size_t>(this->_window_size));
     const size_t actual_payload_size = actual_window_size - has_syn - reach_fin;
 
-    const size_t num_segments = (actual_window_size == 0) ? (has_syn || reach_fin) : ((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE);
+    const size_t num_segments = max((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE, static_cast<size_t>(has_syn || reach_fin));
 
     for(size_t index = 0; index < num_segments; index++) {
         TCPSegment segment;
@@ -56,13 +56,16 @@ void TCPSender::fill_window() {
         payload = Buffer(this->stream_in().read(size));
 
         this->_next_seqno += segment.length_in_sequence_space();
-        this->_receiver_window_size -= segment.length_in_sequence_space();
+        this->_window_size -= segment.length_in_sequence_space();
 
         this->_segments_out.push(segment);
         this->_outstanding_segments.push(segment);
 
         this->_fin |= header.fin;
     }
+
+    this->_is_timer_on |= true;
+    this->_timer_elapsed = 0;
 }
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)
@@ -99,7 +102,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         }
     }
 
-    if (this->bytes_in_flight() == 0)
+    if (this->_outstanding_segments.empty())
         this->_is_timer_on = false;
 
     this->fill_window();

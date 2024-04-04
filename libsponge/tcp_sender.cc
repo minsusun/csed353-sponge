@@ -62,10 +62,14 @@ void TCPSender::fill_window() {
         this->_outstanding_segments.push(segment);
 
         this->_fin |= header.fin;
+        
+        if (!this->_is_timer_on) {
+            this->_is_timer_on = true;
+            this->_retransmission_timeout = this->_initial_retransmission_timeout;
+            this->_timer_elapsed = 0;
+            this->_consecutive_retransmissions = 0;
+        }
     }
-
-    this->_is_timer_on |= true;
-    this->_timer_elapsed = 0;
 }
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)

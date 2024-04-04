@@ -42,7 +42,7 @@ void TCPSender::fill_window() {
 
     const size_t num_segments = (actual_window_size == 0) ? (has_syn || reach_fin) : ((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE);
 
-    for(int index = 0; index < num_segments; index++) {
+    for(size_t index = 0; index < num_segments; index++) {
         TCPSegment segment;
 
         TCPHeader &header = segment.header();

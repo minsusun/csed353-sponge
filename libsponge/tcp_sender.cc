@@ -35,9 +35,9 @@ void TCPSender::fill_window() {
 
     const size_t total_window_size = has_syn + this->stream_in().buffer_size() + has_fin;
 
-    const bool reach_fin = has_fin && this->_receiver_window_size >= total_window_size;
+    const bool reach_fin = has_fin && this->_window_size >= total_window_size;
 
-    const size_t actual_window_size = max(total_window_size, static_cast<size_t>(this->_receiver_window_size));
+    const size_t actual_window_size = max(total_window_size, static_cast<size_t>(this->_window_size));
     const size_t actual_payload_size = actual_window_size - has_syn - reach_fin;
 
     const size_t num_segments = (actual_window_size == 0) ? (has_syn || reach_fin) : ((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE);
@@ -76,6 +76,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         // Update _current_seqno & _window_size
         this->_current_seqno = max(this->_current_seqno, absolute_ackno);
         this->_receiver_window_size = window_size;
+
+        this->_window_size = max(max(window_size, static_cast<uint16_t>(1)) - this->bytes_in_flight(), static_cast<size_t>(0));
 
         // Ignore when timer is off
         if (!this->_is_timer_on)

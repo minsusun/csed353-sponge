@@ -30,10 +30,39 @@ void TCPSender::fill_window() {
     const size_t &MAX_PAYLOAD_SIZE = TCPConfig::MAX_PAYLOAD_SIZE;
 
     // current state of SYN & FIN flag which is needed to be transfered
-    const bool syn = this->_next_seqno == 0;
-    const bool fin = this->_stream.input_ended() && this->_fin;
+    const bool has_syn = this->_next_seqno == 0;
+    const bool has_fin = this->_stream.input_ended() && this->_fin;
 
+    const size_t total_window_size = has_syn + this->stream_in().buffer_size() + has_fin;
 
+    const bool reach_fin = has_fin && this->_receiver_window_size >= total_window_size;
+
+    const size_t actual_window_size = max(total_window_size, static_cast<size_t>(this->_receiver_window_size));
+    const size_t actual_payload_size = actual_window_size - has_syn - reach_fin;
+
+    const size_t num_segments = (actual_window_size == 0) ? (has_syn || reach_fin) : ((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE);
+
+    for(int index = 0; index < num_segments; index++) {
+        TCPSegment segment;
+
+        TCPHeader &header = segment.header();
+        Buffer &payload = segment.payload();
+
+        header.syn = index == 0 && has_syn;
+        header.fin = index == num_segments - 1 && reach_fin;
+        header.seqno = wrap(this->_next_seqno, this->_isn);
+
+        const size_t size = (index == num_segments - 1) ? actual_payload_size % MAX_PAYLOAD_SIZE : MAX_PAYLOAD_SIZE;
+        payload = Buffer(this->stream_in().read(size));
+
+        this->_next_seqno += segment.length_in_sequence_space();
+        this->_receiver_window_size -= segment.length_in_sequence_space();
+
+        this->_segments_out.push(segment);
+        this->_outstanding_segments.push(segment);
+
+        this->_fin |= header.fin;
+    }
 }
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)

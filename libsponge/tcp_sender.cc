@@ -46,14 +46,13 @@ void TCPSender::fill_window() {
         TCPSegment segment;
 
         TCPHeader &header = segment.header();
-        Buffer &payload = segment.payload();
 
         header.syn = index == 0 && has_syn;
         header.fin = index == num_segments - 1 && reach_fin;
         header.seqno = wrap(this->_next_seqno, this->_isn);
 
         const size_t size = (index == num_segments - 1) ? actual_payload_size - MAX_PAYLOAD_SIZE * index : MAX_PAYLOAD_SIZE;
-        payload = Buffer(this->stream_in().read(size));
+        segment.payload() = Buffer(this->stream_in().read(size));
 
         this->_next_seqno += segment.length_in_sequence_space();
         this->_window_size -= segment.length_in_sequence_space();
@@ -122,9 +121,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     this->_timer_elapsed += ms_since_last_tick;
 
     if (this->_timer_elapsed >= this->_retransmission_timeout) {
-        const TCPSegment segment = this->_outstanding_segments.front();
-        
-        this->_segments_out.push(segment);
+        this->_segments_out.push(this->_outstanding_segments.front());
         
         // Exponential Backoff
         // Do only when window size of stream is not zero

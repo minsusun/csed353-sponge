@@ -10,7 +10,7 @@
 // automated checks run by `make check_lab3`.
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
@@ -48,9 +48,10 @@ void TCPSender::fill_window() {
     // number of segments, divided by MAX_PAYLOAD_SIZE
     // when actual payload size is not enough for create a payload(equals 0),
     // number of segments is 1, which is open for flags(only when flag needed to be sent)
-    const size_t num_segments = max((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE, static_cast<size_t>(has_syn || reach_fin));
+    const size_t num_segments =
+        max((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE, static_cast<size_t>(has_syn || reach_fin));
 
-    for(size_t index = 0; index < num_segments; index++) {
+    for (size_t index = 0; index < num_segments; index++) {
         TCPSegment segment;
 
         TCPHeader &header = segment.header();
@@ -59,7 +60,8 @@ void TCPSender::fill_window() {
         header.fin = index == num_segments - 1 && reach_fin;
         header.seqno = wrap(this->_next_seqno, this->_isn);
 
-        const size_t size = (index == num_segments - 1) ? actual_payload_size - MAX_PAYLOAD_SIZE * index : MAX_PAYLOAD_SIZE;
+        const size_t size =
+            (index == num_segments - 1) ? actual_payload_size - MAX_PAYLOAD_SIZE * index : MAX_PAYLOAD_SIZE;
         segment.payload() = Buffer(this->stream_in().read(size));
 
         this->_next_seqno += segment.length_in_sequence_space();
@@ -69,7 +71,7 @@ void TCPSender::fill_window() {
         this->_outstanding_segments.push(segment);
 
         this->_fin |= header.fin;
-        
+
         // timer initiation, timer needs to be turned on upon sending segments
         // no need to be resetted when already timer is running
         if (!this->_is_timer_on) {
@@ -93,7 +95,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         this->_current_seqno = max(this->_current_seqno, absolute_ackno);
         this->_receiver_window_size = window_size;
 
-        this->_window_size = max(max(window_size, static_cast<uint16_t>(1)) - this->bytes_in_flight(), static_cast<size_t>(0));
+        this->_window_size =
+            max(max(window_size, static_cast<uint16_t>(1)) - this->bytes_in_flight(), static_cast<size_t>(0));
 
         // Ignore when timer is off
         if (!this->_is_timer_on)
@@ -102,8 +105,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         // Pop acked segments from outstanding segments queue
         while (!this->_outstanding_segments.empty()) {
             const TCPSegment segment = this->_outstanding_segments.front();
-            
-            if (unwrap(segment.header().seqno, this->_isn, this->_next_seqno) + segment.length_in_sequence_space() > this->_current_seqno)
+
+            if (unwrap(segment.header().seqno, this->_isn, this->_next_seqno) + segment.length_in_sequence_space() >
+                this->_current_seqno)
                 break;
 
             // Reset timer when the first outstanding segment is acked, which is about to be pop
@@ -128,20 +132,20 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     // Ignore when timer is not activated
     if (!this->_is_timer_on)
         return;
-    
+
     // Update elapsed time
     this->_timer_elapsed += ms_since_last_tick;
 
     if (this->_timer_elapsed >= this->_retransmission_timeout) {
         this->_segments_out.push(this->_outstanding_segments.front());
-        
+
         // Exponential Backoff
         // Do only when window size of stream is not zero
         if (this->_receiver_window_size > 0) {
-            this->_consecutive_retransmissions++;    // Keep track of consecutive retransmission
+            this->_consecutive_retransmissions++;  // Keep track of consecutive retransmission
             this->_retransmission_timeout <<= 1;
         }
-        
+
         this->_timer_elapsed = 0;
     }
 }

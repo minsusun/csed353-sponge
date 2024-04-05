@@ -29,25 +29,25 @@ void TCPSender::fill_window() {
     // Shortcut for TCPConfig::MAX_PAYLOAD_SIZE
     const size_t &MAX_PAYLOAD_SIZE = TCPConfig::MAX_PAYLOAD_SIZE;
 
-    // current state of SYN & FIN flag which is needed to be transfered
+    // Current state of SYN & FIN flag which is needed to be transfered
     const bool has_syn = this->_next_seqno == 0;
     const bool has_fin = this->_stream.input_ended() && !this->_fin;
 
-    // window_size considering SYN & FIN flags
+    // Window_size considering SYN & FIN flags
     const size_t total_window_size = has_syn + this->stream_in().buffer_size() + has_fin;
 
     // FIN flag can be sent only when last segment is able to be sent
     const bool reach_fin = has_fin && this->_window_size >= total_window_size;
 
-    // actual available window size
+    // Actual available window size
     const size_t actual_window_size = min(total_window_size, static_cast<size_t>(this->_window_size));
-    // actual payload size with actual window size
-    // payload size does not consider SYN & FIN
+    // Actual payload size with actual window size
+    // Payload size does not consider SYN & FIN
     const size_t actual_payload_size = actual_window_size - has_syn - reach_fin;
 
-    // number of segments, divided by MAX_PAYLOAD_SIZE
-    // when actual payload size is not enough for create a payload(equals 0),
-    // number of segments is 1, which is open for flags(only when flag needed to be sent)
+    // Number of segments, divided by MAX_PAYLOAD_SIZE
+    // When actual payload size is not enough for create a payload(equals 0),
+    // Number of segments is 1, which is open for flags(only when flag needed to be sent)
     const size_t num_segments =
         max((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE, static_cast<size_t>(has_syn || reach_fin));
 
@@ -72,8 +72,8 @@ void TCPSender::fill_window() {
 
         this->_fin |= header.fin;
 
-        // timer initiation, timer needs to be turned on upon sending segments
-        // no need to be resetted when already timer is running
+        // Timer initiation, timer needs to be turned on upon sending segments
+        // No need to be resetted when already timer is running
         if (!this->_is_timer_on) {
             this->_is_timer_on = true;
             this->_retransmission_timeout = this->_initial_retransmission_timeout;
@@ -95,6 +95,10 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         this->_current_seqno = max(this->_current_seqno, absolute_ackno);
         this->_receiver_window_size = window_size;
 
+        // Update estimated receiver window size
+        // 1. lower bound of available window should be 1 which is for flags
+        // 2. estimated receiver window size should be considered with in_flight segments
+        // 3. lower bound of estimated receiver window size is 0
         this->_window_size =
             max(max(window_size, static_cast<uint16_t>(1)) - this->bytes_in_flight(), static_cast<size_t>(0));
 
@@ -137,6 +141,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     this->_timer_elapsed += ms_since_last_tick;
 
     if (this->_timer_elapsed >= this->_retransmission_timeout) {
+        // Retransmit the first unacked segment
         this->_segments_out.push(this->_outstanding_segments.front());
 
         // Exponential Backoff

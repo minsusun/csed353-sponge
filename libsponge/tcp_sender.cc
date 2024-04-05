@@ -33,13 +33,21 @@ void TCPSender::fill_window() {
     const bool has_syn = this->_next_seqno == 0;
     const bool has_fin = this->_stream.input_ended() && !this->_fin;
 
+    // window_size considering SYN & FIN flags
     const size_t total_window_size = has_syn + this->stream_in().buffer_size() + has_fin;
 
+    // FIN flag can be sent only when last segment is able to be sent
     const bool reach_fin = has_fin && this->_window_size >= total_window_size;
 
+    // actual available window size
     const size_t actual_window_size = min(total_window_size, static_cast<size_t>(this->_window_size));
+    // actual payload size with actual window size
+    // payload size does not consider SYN & FIN
     const size_t actual_payload_size = actual_window_size - has_syn - reach_fin;
 
+    // number of segments, divided by MAX_PAYLOAD_SIZE
+    // when actual payload size is not enough for create a payload(equals 0),
+    // number of segments is 1, which is open for flags(only when flag needed to be sent)
     const size_t num_segments = max((actual_payload_size + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE, static_cast<size_t>(has_syn || reach_fin));
 
     for(size_t index = 0; index < num_segments; index++) {
@@ -62,6 +70,8 @@ void TCPSender::fill_window() {
 
         this->_fin |= header.fin;
         
+        // timer initiation, timer needs to be turned on upon sending segments
+        // no need to be resetted when already timer is running
         if (!this->_is_timer_on) {
             this->_is_timer_on = true;
             this->_retransmission_timeout = this->_initial_retransmission_timeout;
@@ -105,9 +115,11 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         }
     }
 
+    // timer should be turned off when there is no outstanding segment
     if (this->_outstanding_segments.empty())
         this->_is_timer_on = false;
 
+    // try to fill window
     this->fill_window();
 }
 

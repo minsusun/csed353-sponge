@@ -60,7 +60,24 @@ void TCPConnection::_report() {
 }
 
 void TCPConnection::_send() {
+    queue<TCPSegment> &waiting_queue = this->_sender.segments_out();
 
+    while (!waiting_queue.empty()) {
+        TCPSegment segment = waiting_queue.front();
+        waiting_queue.pop();
+
+        TCPHeader &header = segment.header();
+
+        if (header.fin) this->_fin = true;
+
+        const optional<WrappingInt32> ackno = this->_receiver.ackno();
+        if (ackno.has_value()) header.ack = true, header.ackno = ackno.value();
+
+        header.win = max(this->_receiver.window_size(), static_cast<size_t>(0xFFFF));
+        header.rst = this->_error;
+
+        this->_segments_out.push(segment);
+    }
 }
 
 

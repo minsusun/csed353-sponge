@@ -20,7 +20,30 @@ size_t TCPConnection::unassembled_bytes() const { return this->active() ? this->
 
 size_t TCPConnection::time_since_last_segment_received() const { return this->active() ? this->_time_since_last_segment_received : 0; }
 
-void TCPConnection::segment_received(const TCPSegment &seg) { DUMMY_CODE(seg); }
+void TCPConnection::segment_received(const TCPSegment &seg) {
+    this->_time_since_last_segment_received = 0;
+
+    const TCPHeader &header = seg.header();
+
+    if (header.rst) this->_report();
+
+    if (!this->active()) return;
+
+    const optional<WrappingInt32> ackno = this->_receiver.ackno();
+    if (seg.length_in_sequence_space() == 0 && ackno.has_value() && header.seqno == ackno.value() - 1) this->_sender.send_empty_segment();
+    else {
+        this->_receiver.segment_received(seg);
+
+        if (header.ack) this->_sender.ack_received(header.ackno, header.win);
+        else this->_sender.fill_window();
+
+        if (seg.length_in_sequence_space() != 0 && this->_sender.segments_out().empty()) this->_sender.send_empty_segment();
+
+        if (this->_receiver.stream_out().eof() && !(this->_sender.stream_in().eof() && this->_fin)) this->_linger_after_streams_finish = false;
+    }
+
+    this->_send();
+}
 
 bool TCPConnection::active() const {
     if (this->_error) return false;

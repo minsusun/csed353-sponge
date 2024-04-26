@@ -48,9 +48,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 bool TCPConnection::active() const {
     if (this->_error) return false;
 
-    if (!this->_check() || this->_linger_after_streams_finish) return false;
+    if (!this->_check() || this->_linger_after_streams_finish) return true;
 
-    return true;
+    return false;
 }
 
 size_t TCPConnection::write(const string &data) {
@@ -94,7 +94,7 @@ void TCPConnection::connect() {
 bool TCPConnection::_check() const {
     if (this->_sender.bytes_in_flight() != 0 || !(this->_fin && this->_sender.stream_in().eof())) return false;
 
-    if (this->_receiver.stream_out().eof()) return false;
+    if (!this->_receiver.stream_out().eof()) return false;
 
     return true;
 }

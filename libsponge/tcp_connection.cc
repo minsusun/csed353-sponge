@@ -31,12 +31,29 @@ bool TCPConnection::active() const {
 }
 
 size_t TCPConnection::write(const string &data) {
-    DUMMY_CODE(data);
-    return {};
+    if (!this->active()) return;
+
+    const size_t size = this->_sender.stream_in().write(data);
+    
+    this->_sender.fill_window();
+    this->_send();
+    
+    return size;
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
-void TCPConnection::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
+void TCPConnection::tick(const size_t ms_since_last_tick) {
+    if (!this->active()) return;
+
+    this->_time_since_last_segment_received += ms_since_last_tick;
+    this->_sender.tick(ms_since_last_tick);
+
+    if (this->_sender.consecutive_retransmissions() > this->_cfg.MAX_RETX_ATTEMPTS) this->_report();
+
+    if (this->_check() && _time_since_last_segment_received >= 10 * this->_cfg.rt_timeout) this->_linger_after_streams_finish = false;
+
+    this->_send();
+}
 
 void TCPConnection::end_input_stream() {
     if (this->active()) return;

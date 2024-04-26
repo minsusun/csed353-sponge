@@ -54,7 +54,7 @@ bool TCPConnection::active() const {
 }
 
 size_t TCPConnection::write(const string &data) {
-    if (!this->active()) return;
+    if (!this->active()) return 0;
 
     const size_t size = this->_sender.stream_in().write(data);
     

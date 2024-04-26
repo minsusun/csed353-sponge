@@ -38,7 +38,13 @@ size_t TCPConnection::write(const string &data) {
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
 
-void TCPConnection::end_input_stream() {}
+void TCPConnection::end_input_stream() {
+    if (this->active()) return;
+
+    this->_sender.stream_in().end_input();
+    this->_sender.fill_window();
+    this->_send();
+}
 
 void TCPConnection::connect() {
     this->_sender.fill_window();

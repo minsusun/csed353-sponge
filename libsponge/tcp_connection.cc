@@ -22,7 +22,13 @@ size_t TCPConnection::time_since_last_segment_received() const { return this->ac
 
 void TCPConnection::segment_received(const TCPSegment &seg) { DUMMY_CODE(seg); }
 
-bool TCPConnection::active() const { return {}; }
+bool TCPConnection::active() const {
+    if (this->_error) return false;
+
+    if (!this->_check() || this->_linger_after_streams_finish) return false;
+
+    return true;
+}
 
 size_t TCPConnection::write(const string &data) {
     DUMMY_CODE(data);
@@ -34,7 +40,29 @@ void TCPConnection::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_
 
 void TCPConnection::end_input_stream() {}
 
-void TCPConnection::connect() {}
+void TCPConnection::connect() {
+    this->_sender.fill_window();
+    this->_send();
+}
+
+bool TCPConnection::_check() const {
+    if (this->_sender.bytes_in_flight() != 0 || !(this->_fin && this->_sender.stream_in().eof())) return false;
+
+    if (this->_receiver.stream_out().eof()) return false;
+
+    return true;
+}
+
+void TCPConnection::_report() {
+    this->_error = true;
+    this->_sender.stream_in().set_error();
+    this->_receiver.stream_out().set_error();
+}
+
+void TCPConnection::_send() {
+
+}
+
 
 TCPConnection::~TCPConnection() {
     try {
@@ -42,6 +70,9 @@ TCPConnection::~TCPConnection() {
             cerr << "Warning: Unclean shutdown of TCPConnection\n";
 
             // Your code here: need to send a RST segment to the peer
+            this->_report();
+            this->_sender.send_empty_segment();
+            this->_send();
         }
     } catch (const exception &e) {
         std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;

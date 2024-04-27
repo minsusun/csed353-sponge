@@ -90,7 +90,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 }
 
 void TCPConnection::end_input_stream() {
-    if (this->active()) return;
+    if (!this->active()) return;
 
     this->_sender.stream_in().end_input();
     this->_sender.fill_window();

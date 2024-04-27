@@ -8,17 +8,21 @@
 // automated checks run by `make check`.
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
-size_t TCPConnection::remaining_outbound_capacity() const { return this->active() ? this->_sender.stream_in().remaining_capacity() : 0; }
+size_t TCPConnection::remaining_outbound_capacity() const {
+    return this->active() ? this->_sender.stream_in().remaining_capacity() : 0;
+}
 
 size_t TCPConnection::bytes_in_flight() const { return this->active() ? this->_sender.bytes_in_flight() : 0; }
 
 size_t TCPConnection::unassembled_bytes() const { return this->active() ? this->_receiver.unassembled_bytes() : 0; }
 
-size_t TCPConnection::time_since_last_segment_received() const { return this->active() ? this->_time_since_last_segment_received : 0; }
+size_t TCPConnection::time_since_last_segment_received() const {
+    return this->active() ? this->_time_since_last_segment_received : 0;
+}
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     this->_time_since_last_segment_received = 0;
@@ -63,19 +67,21 @@ bool TCPConnection::active() const {
 }
 
 size_t TCPConnection::write(const string &data) {
-    if (!this->active()) return 0;
+    if (!this->active())
+        return 0;
 
     const size_t size = this->_sender.stream_in().write(data);
-    
+
     this->_sender.fill_window();
     this->_send();
-    
+
     return size;
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
-    if (!this->active()) return;
+    if (!this->active())
+        return;
 
     this->_time_since_last_segment_received += ms_since_last_tick;
     this->_sender.tick(ms_since_last_tick);
@@ -90,7 +96,8 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 }
 
 void TCPConnection::end_input_stream() {
-    if (!this->active()) return;
+    if (!this->active())
+        return;
 
     this->_sender.stream_in().end_input();
     this->_sender.fill_window();
@@ -103,9 +110,11 @@ void TCPConnection::connect() {
 }
 
 bool TCPConnection::_check() const {
-    if (!(this->_fin && this->_sender.stream_in().eof()) || this->_sender.bytes_in_flight() != 0) return false;
+    if (!(this->_fin && this->_sender.stream_in().eof()) || this->_sender.bytes_in_flight() != 0)
+        return false;
 
-    if (!this->_receiver.stream_out().eof()) return false;
+    if (!this->_receiver.stream_out().eof())
+        return false;
 
     return true;
 }
@@ -122,13 +131,15 @@ void TCPConnection::_send() {
     while (!waiting_queue.empty()) {
         TCPSegment segment = waiting_queue.front();
         waiting_queue.pop();
-        
+
         TCPHeader &header = segment.header();
 
-        if (header.fin) this->_fin = true;
+        if (header.fin)
+            this->_fin = true;
 
         const optional<WrappingInt32> ackno = this->_receiver.ackno();
-        if (ackno.has_value()) header.ack = true, header.ackno = ackno.value();
+        if (ackno.has_value())
+            header.ack = true, header.ackno = ackno.value();
 
         header.win = min(this->_receiver.window_size(), static_cast<size_t>(0xFFFF));
         header.rst = this->_error;
@@ -136,7 +147,6 @@ void TCPConnection::_send() {
         this->_segments_out.push(segment);
     }
 }
-
 
 TCPConnection::~TCPConnection() {
     try {

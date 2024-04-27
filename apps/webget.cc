@@ -1,10 +1,9 @@
 // #include "socket.hh"
+#include "tcp_sponge_socket.hh"
 #include "util.hh"
 
 #include <cstdlib>
 #include <iostream>
-
-#include "tcp_sponge_socket.hh"
 
 using namespace std;
 

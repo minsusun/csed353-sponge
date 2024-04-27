@@ -121,14 +121,14 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 
             this->_outstanding_segments.pop();
         }
+
+        // try to fill window
+        this->fill_window();
     }
 
     // timer should be turned off when there is no outstanding segment
     if (this->_outstanding_segments.empty())
         this->_is_timer_on = false;
-
-    // try to fill window
-    this->fill_window();
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method

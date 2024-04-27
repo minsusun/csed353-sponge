@@ -25,41 +25,54 @@ size_t TCPConnection::time_since_last_segment_received() const {
 }
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
+    // Initiate _time_since_last_segment_received
     this->_time_since_last_segment_received = 0;
 
     const TCPHeader &header = seg.header();
 
+    // Segment reported to be error
     if (header.rst)
         this->_report();
 
+    // Ignore when inactive
     if (!this->active())
         return;
 
     const optional<WrappingInt32> ackno = this->_receiver.ackno();
+    // Keep-alive segment
     if (seg.length_in_sequence_space() == 0 && ackno.has_value() && header.seqno == ackno.value() - 1)
         this->_sender.send_empty_segment();
+    // Ordinary segments
     else {
+        // Alarm receiver about segment
         this->_receiver.segment_received(seg);
 
+        // Alarm sender about ack or fill window
         if (header.ack)
             this->_sender.ack_received(header.ackno, header.win);
         else
             this->_sender.fill_window();
 
+        // When received data segments
         if (seg.length_in_sequence_space() != 0 && this->_sender.segments_out().empty())
             this->_sender.send_empty_segment();
 
+        // lingering condition check
         if (this->_receiver.stream_out().eof() && !(this->_sender.stream_in().eof() && this->_fin))
             this->_linger_after_streams_finish = false;
     }
 
+    // Try to send segments
     this->_send();
 }
 
 bool TCPConnection::active() const {
+    // When error occrued, the connection is inactive
     if (this->_error)
         return false;
 
+    // When connection should not be closed or
+    // When lingering is activated
     if (!this->_check() || this->_linger_after_streams_finish)
         return true;
 
@@ -67,6 +80,7 @@ bool TCPConnection::active() const {
 }
 
 size_t TCPConnection::write(const string &data) {
+    // Ignore when inactive
     if (!this->active())
         return 0;
 
@@ -80,15 +94,20 @@ size_t TCPConnection::write(const string &data) {
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
+    // Ignore when inactive
     if (!this->active())
         return;
 
+    // Update _time_since_last_segment_received
+    // Propagate tick to sender
     this->_time_since_last_segment_received += ms_since_last_tick;
     this->_sender.tick(ms_since_last_tick);
 
+    // When too many retransmissions
     if (this->_sender.consecutive_retransmissions() > this->_cfg.MAX_RETX_ATTEMPTS)
         this->_report();
 
+    // Stop lingering
     if (this->_check() && _time_since_last_segment_received >= 10 * this->_cfg.rt_timeout)
         this->_linger_after_streams_finish = false;
 
@@ -96,6 +115,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 }
 
 void TCPConnection::end_input_stream() {
+    // Ignore when inactive
     if (!this->active())
         return;
 
@@ -110,6 +130,10 @@ void TCPConnection::connect() {
 }
 
 bool TCPConnection::_check() const {
+    // Checking about the prerequisite conditions
+    // returns true: when the connection can be closed
+    // returns false: when the connection should not be closed
+
     if (!(this->_fin && this->_sender.stream_in().eof()) || this->_sender.bytes_in_flight() != 0)
         return false;
 
@@ -120,6 +144,7 @@ bool TCPConnection::_check() const {
 }
 
 void TCPConnection::_report() {
+    // Mark as error occured and set errors to streams of sender and receiver
     this->_error = true;
     this->_sender.stream_in().set_error();
     this->_receiver.stream_out().set_error();
@@ -128,22 +153,27 @@ void TCPConnection::_report() {
 void TCPConnection::_send() {
     queue<TCPSegment> &waiting_queue = this->_sender.segments_out();
 
+    // Until sender's segments_out queue is empty
     while (!waiting_queue.empty()) {
         TCPSegment segment = waiting_queue.front();
         waiting_queue.pop();
 
         TCPHeader &header = segment.header();
 
+        // Mark fin when fin of segment is set
         if (header.fin)
             this->_fin = true;
 
+        // Mark ack and ackno
         const optional<WrappingInt32> ackno = this->_receiver.ackno();
         if (ackno.has_value())
             header.ack = true, header.ackno = ackno.value();
 
+        // Mark win and rst
         header.win = min(this->_receiver.window_size(), static_cast<size_t>(0xFFFF));
         header.rst = this->_error;
 
+        // Push segment to outgoing segments
         this->_segments_out.push(segment);
     }
 }

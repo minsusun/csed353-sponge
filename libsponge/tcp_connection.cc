@@ -121,6 +121,8 @@ void TCPConnection::_send() {
 
     while (!waiting_queue.empty()) {
         TCPSegment segment = waiting_queue.front();
+        waiting_queue.pop();
+        
         TCPHeader &header = segment.header();
 
         if (header.fin) this->_fin = true;
@@ -132,7 +134,6 @@ void TCPConnection::_send() {
         header.rst = this->_error;
 
         this->_segments_out.push(segment);
-        waiting_queue.pop();
     }
 }
 

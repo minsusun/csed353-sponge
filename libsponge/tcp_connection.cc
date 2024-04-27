@@ -134,9 +134,11 @@ bool TCPConnection::_check_prereqs() const {
     // returns true: when the connection can be closed
     // returns false: when the connection should not be closed
 
+    // Sender side
     if (!(this->_fin && this->_sender.stream_in().eof()) || this->_sender.bytes_in_flight() != 0)
         return false;
 
+    // Receiver side
     if (!this->_receiver.stream_out().eof())
         return false;
 

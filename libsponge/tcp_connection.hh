@@ -26,7 +26,7 @@ class TCPConnection {
 
     size_t _time_since_last_segment_received{0};
 
-    bool _check() const;
+    bool _check_prereqs() const;
 
     void _report();
     void _send();

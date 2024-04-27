@@ -73,7 +73,7 @@ bool TCPConnection::active() const {
 
     // When connection should not be closed or
     // When lingering is activated
-    if (!this->_check() || this->_linger_after_streams_finish)
+    if (!this->_check_prereqs() || this->_linger_after_streams_finish)
         return true;
 
     return false;
@@ -108,7 +108,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
         this->_report();
 
     // Stop lingering
-    if (this->_check() && _time_since_last_segment_received >= 10 * this->_cfg.rt_timeout)
+    if (this->_check_prereqs() && _time_since_last_segment_received >= 10 * this->_cfg.rt_timeout)
         this->_linger_after_streams_finish = false;
 
     this->_send();
@@ -129,7 +129,7 @@ void TCPConnection::connect() {
     this->_send();
 }
 
-bool TCPConnection::_check() const {
+bool TCPConnection::_check_prereqs() const {
     // Checking about the prerequisite conditions
     // returns true: when the connection can be closed
     // returns false: when the connection should not be closed

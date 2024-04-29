@@ -234,5 +234,5 @@ add_custom_target (check_lab6 COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
 
 add_custom_target (check COMMAND "${PROJECT_SOURCE_DIR}/tun.sh" check 144 145
                          COMMAND "${PROJECT_SOURCE_DIR}/tap.sh" check 10
-                         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --timeout 10 -R '^t_|^arp_|^router_'
+                         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --timeout 10 -R '^t_|^arp_'
                          COMMENT "Testing libsponge...")

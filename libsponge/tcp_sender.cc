@@ -21,69 +21,69 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity)
-    , _ack_no(0)
-    , elapsed_time(0)
-    , _rto(0)
-    , timer_run(false)
-    , num_cons_trans(0)
-    , _window_size(1)
-    , fin_sent(false) {}
+    , rto{retx_timeout} {}
 
-uint64_t TCPSender::bytes_in_flight() const { return _next_seqno - _ack_no; }
+uint64_t TCPSender::bytes_in_flight() const { return _bytes_in_flight; }
 
 void TCPSender::fill_window() {
-    while ((_window_size >= bytes_in_flight()) &&
-           !fin_sent)  // check availability about sending packet and whether fin packet was made or not
-    {
+    if (!_next_seqno) {
         TCPSegment segment;
-        size_t payload_size = _window_size - bytes_in_flight();  // for flow control
 
-        if (_window_size == 0 && bytes_in_flight() == 0)  // treat 0 window size as 1
-        {
-            payload_size = 1;
+        segment.header().syn = true;
+        segment.header().seqno = wrap(_next_seqno, _isn);
+
+        _next_seqno += segment.length_in_sequence_space();
+        _bytes_in_flight += segment.length_in_sequence_space();
+
+        _segments_out.push(segment);
+        outstanding_seg.push(segment);
+
+        if (!timer_started) {
+            timer_started = true;
+            time = 0;
         }
 
-        if (_next_seqno == 0 &&
-            payload_size != 0)  // make syn flag and syn flag also occupy the byte of string, so reduce payload size
-        {
-            segment.header().syn = true;
-            payload_size--;
+        return;
+    }
+
+    uint16_t free_window = 0;
+
+    free_window = (_window_size > 0 ? _window_size : 1) + absolute_ack - _next_seqno;
+
+    while (free_window) {
+        TCPSegment segment;
+
+        if (fin) {
+            break;
         }
 
-        if (payload_size > TCPConfig::MAX_PAYLOAD_SIZE)  // limitation by MSS
-        {
-            payload_size = TCPConfig::MAX_PAYLOAD_SIZE;
-        }
+        size_t payload_length = min({static_cast<size_t>(free_window),
+                                     static_cast<size_t>(TCPConfig::MAX_PAYLOAD_SIZE),
+                                     _stream.buffer_size()});
+        segment.payload() = Buffer{_stream.read(payload_length)};
 
-        segment.header().seqno = wrap(_next_seqno, _isn);  // make sequence number of segment
-        if (payload_size != 0 && !_stream.eof())           // check get something or not
-        {
-            segment.payload() = _stream.read(payload_size);
-        }
-
-        if (_stream.eof() && ((_window_size - bytes_in_flight()) > segment.length_in_sequence_space() ||
-                              (_window_size == 0 && bytes_in_flight() == 0 &&
-                               segment.length_in_sequence_space() ==
-                                   0)))  // eof, okay to add fin to flow control or empty packet->set fin flag
-        {
+        if (static_cast<size_t>(free_window) > payload_length && _stream.eof()) {
             segment.header().fin = true;
-            fin_sent = true;
+            fin = true;
         }
 
-        if (segment.length_in_sequence_space() == 0)  // nothing be sent, then do nothing
-        {
+        if (!segment.length_in_sequence_space()) {
             return;
         }
 
-        _segments_out.push(segment);                            // store to send
-        _segments_unacked.push(unacked{_next_seqno, segment});  // store to retransmit if negative acknowledgement
-        _next_seqno += segment.length_in_sequence_space();      // update sequence number
+        free_window -= static_cast<uint64_t>(segment.length_in_sequence_space());
 
-        if (!timer_run)  // if no timer run, then start timer
-        {
-            elapsed_time = 0;
-            _rto = _initial_retransmission_timeout;
-            timer_run = true;
+        segment.header().seqno = wrap(_next_seqno, _isn);
+
+        _next_seqno += segment.length_in_sequence_space();
+        _bytes_in_flight += segment.length_in_sequence_space();
+
+        _segments_out.push(segment);
+        outstanding_seg.push(segment);
+
+        if (!timer_started) {
+            timer_started = true;
+            time = 0;
         }
     }
 }
@@ -91,57 +91,54 @@ void TCPSender::fill_window() {
 //! \param ackno The remote receiver's ackno (acknowledgment number)
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
-    uint64_t new_ackno = unwrap(ackno, _isn, _ack_no);  // get acknowledgement number
-    _window_size = window_size;                         // check receiver's window size for flow control
+    absolute_ack = unwrap(ackno, _isn, _next_seqno);
+    _window_size = window_size;
 
-    if ((new_ackno > _ack_no) && (new_ackno <= _next_seqno))  // if ackno is not in sender's window, ignore
-    {
-        timer_run = false;  // stop timer
+    if (absolute_ack > _next_seqno) {
+        return;
+    }
 
-        _ack_no = new_ackno;  // store accumulate ack
+    while (!outstanding_seg.empty()) {
+        if (absolute_ack >= unwrap(outstanding_seg.front().header().seqno, _isn, _next_seqno) +
+                                outstanding_seg.front().length_in_sequence_space()) {
+            _bytes_in_flight -= outstanding_seg.front().length_in_sequence_space();
+            outstanding_seg.pop();
 
-        num_cons_trans = 0;  // reset number of consecutive number because ack is received
-
-        while ((!_segments_unacked.empty()) &&
-               ((_segments_unacked.front().seqno + _segments_unacked.front().packet.length_in_sequence_space()) <=
-                new_ackno))  // check packet which is acked
-        {
-            _segments_unacked.pop();
-        }
-
-        if (!_segments_unacked.empty())  // if there is unacked packet, start timer
-        {
-            elapsed_time = 0;
-            _rto = _initial_retransmission_timeout;
-            timer_run = true;
+            time = 0;
+            rto = _initial_retransmission_timeout;
+            consecutive_retransmission = 0;
+        } else {
+            break;
         }
     }
+
+    if (!outstanding_seg.size()) {
+        timer_started = false;
+    }
+
+    fill_window();
+    return;
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
-    if (timer_run)  // only run when timer is running
-    {
-        elapsed_time += ms_since_last_tick;  // update elapsed time
+    time += ms_since_last_tick;
 
-        if (elapsed_time >= _rto)  // timeout
-        {
-            _segments_out.push(_segments_unacked.front().packet);  // retransmit first unacked packet
+    if (time >= rto && outstanding_seg.size()) {
+        _segments_out.push(outstanding_seg.front());
+        consecutive_retransmission++;
 
-            elapsed_time = 0;
-
-            if (_window_size != 0)  // if window size is not 0, then exponential backoff
-            {
-                _rto *= 2;
-                num_cons_trans++;
-            }
+        if (_window_size || outstanding_seg.front().header().syn) {
+            rto *= 2;
         }
+
+        time = 0;
     }
 }
 
-unsigned int TCPSender::consecutive_retransmissions() const { return num_cons_trans; }
+unsigned int TCPSender::consecutive_retransmissions() const { return consecutive_retransmission; }
 
-void TCPSender::send_empty_segment() {  // just set seqno and send
+void TCPSender::send_empty_segment() {
     TCPSegment segment;
     segment.header().seqno = wrap(_next_seqno, _isn);
     _segments_out.push(segment);

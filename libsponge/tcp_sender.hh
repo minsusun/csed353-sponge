@@ -32,23 +32,15 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
-    uint64_t _ack_no;  // to store the first negative acknowledgement number
-
-    size_t elapsed_time;  // to store elapsed time
-    size_t _rto;          // to store rto
-    bool timer_run;       // to store whether timer is running or not
-
-    unsigned int num_cons_trans;  // to store the number of consecutive retransmission
-
-    size_t _window_size;  // to store the size of receiver's window
-
-    bool fin_sent;  // to store fin flag sent or not
-    struct unacked {
-        uint64_t seqno;     // sequence number of packet
-        TCPSegment packet;  // packet
-    };
-
-    std::queue<unacked> _segments_unacked{};  // queue of segments that sender doesn't received acknowledgement
+    unsigned int rto{0};
+    uint64_t _bytes_in_flight{0};
+    bool fin{false};
+    std::queue<TCPSegment> outstanding_seg{};
+    bool timer_started{false};
+    unsigned int time{0};
+    unsigned int consecutive_retransmission{0};
+    uint16_t _window_size{0};
+    uint64_t absolute_ack{0};
 
   public:
     //! Initialize a TCPSender

@@ -20,15 +20,12 @@ class TCPConnection {
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
-    size_t _time_since_last_segment_received{0};
-    // Whether the connection is still active
-    bool _is_active{true};
-    // Set when a RST segment is sent or received
-    bool _RST_flag{false};
-    // Send packet with flags
-    void send_packet();
-    // Handle a RST segment received from the peer with a sending option
-    void handle_RST(bool sending);
+
+    size_t _time{0};
+    bool _active{true};
+
+    void sending_segments();
+    void reset();
 
   public:
     //! \name "Input" interface for the writer
@@ -53,7 +50,6 @@ class TCPConnection {
 
     //! \brief The inbound byte stream received from the peer
     ByteStream &inbound_stream() { return _receiver.stream_out(); }
-
     //!@}
 
     //! \name Accessors used for testing

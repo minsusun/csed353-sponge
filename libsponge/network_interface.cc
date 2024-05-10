@@ -34,7 +34,7 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     // convert IP address of next hop to raw 32-bit representation (used in ARP header)
     const uint32_t next_hop_ip = next_hop.ipv4_numeric();
 
-    if(this->_ARP_table.find(next_hop_ip) != this->_ARP_table.end())
+    if(this->_is_ip_known(next_hop_ip))
         this->_frames_out.push(this->_generate_frame(next_hop_ip, dgram));
     else {
         this->_ARP_pending_datagrams.push_back({next_hop_ip, dgram});

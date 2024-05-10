@@ -52,9 +52,17 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
-    std::map<uint32_t, std::pair<EthernetAddress, size_t>> _ARP_table{};
-    std::list<std::pair<uint32_t, size_t>> _ARP_pending_list{};
-    std::list<std::pair<uint32_t, InternetDatagram>> _ARP_pending_datagram{};
+    std::map<uint32_t, std::pair<EthernetAddress, size_t>> _ARP_table{};          // ip_address: {MAC address, TTL}
+    std::list<std::pair<uint32_t, size_t>> _ARP_pending_ip_addresses{};           // {ip_address, TTL}
+    std::list<std::pair<uint32_t, InternetDatagram>> _ARP_pending_datagrams{};    // {ip_address, datagram}
+
+    bool _is_ip_known(const uint32_t &ip) { return this->_ARP_table.find(ip) != this->_ARP_table.end(); }
+
+    ARPMessage _generate_ARPMessage(const uint32_t ip_address, const uint16_t opcode);
+
+    void _build_frame_header(EthernetHeader &header, const uint32_t &dst_ip_address, const uint16_t &type);
+    EthernetFrame _generate_frame(const uint32_t dst_ip_address, InternetDatagram datagram);
+    EthernetFrame _generate_frame(const uint32_t dst_ip_address, ARPMessage message);
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

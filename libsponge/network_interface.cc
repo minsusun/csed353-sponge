@@ -3,7 +3,6 @@
 #include "arp_message.hh"
 #include "ethernet_frame.hh"
 
-#include <algorithm>
 #include <iostream>
 
 // Dummy implementation of a network interface

@@ -91,14 +91,14 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         this->_ARP_table[ip] = {mac, ARPConfig::DEFAULT_ARP_TTL};
 
         for(auto it = this->_ARP_pending_ip_addresses.begin(); it != this->_ARP_pending_ip_addresses.end(); ) {
-            if(it->first == ip) this->_ARP_pending_ip_addresses.erase(it);
+            if(it->first == ip) it = this->_ARP_pending_ip_addresses.erase(it);
             else it++;
         }
 
         for(auto it = this->_ARP_pending_datagrams.begin(); it != this->_ARP_pending_datagrams.end(); ) {
             if(it->first == ip) {
                 this->_frames_out.push(this->_generate_frame(it->first, it->second));
-                this->_ARP_pending_datagrams.erase(it);
+                it = this->_ARP_pending_datagrams.erase(it);
             }
             else it++;
         }

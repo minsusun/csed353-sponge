@@ -7,6 +7,8 @@
 
 #include <optional>
 #include <queue>
+#include <map>
+#include <list>
 
 //! \brief Config for ARP
 class ARPConfig {
@@ -49,6 +51,10 @@ class NetworkInterface {
 
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
+
+    std::map<uint32_t, std::pair<EthernetAddress, size_t>> _ARP_table{};
+    std::list<std::pair<uint32_t, size_t>> _ARP_pending_list{};
+    std::list<std::pair<uint32_t, InternetDatagram>> _ARP_pending_datagram{};
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

@@ -33,17 +33,21 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     // convert IP address of next hop to raw 32-bit representation (used in ARP header)
     const uint32_t next_hop_ip = next_hop.ipv4_numeric();
 
+    // when given next hop ip is known, just send frame
     if (this->_is_ip_known(next_hop_ip))
         this->_frames_out.push(this->_generate_frame(next_hop_ip, dgram));
     else {
+        // when given next hop ip is unknown, pend datagram to pending datagram list
         this->_ARP_pending_datagrams.push_back({next_hop_ip, dgram});
 
         bool flag = false;
 
+        // search for pending ARP requests for given ip
         for (auto &e : this->_ARP_pending_ip_addresses)
             if (e.first == next_hop_ip)
                 flag = true;
 
+        // when there was no pending ARP request, send ARP message frame and list up the ip in pending ip list
         if (!flag) {
             this->_ARP_pending_ip_addresses.push_back({next_hop_ip, ARPConfig::DEFAULT_ARP_TIMEOUT});
             this->_frames_out.push(this->_generate_frame(
@@ -56,33 +60,43 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
     const EthernetHeader &header = frame.header();
 
+    // prune for inappropriate frame
     if (header.dst != this->_ethernet_address && header.dst != ETHERNET_BROADCAST)
         return nullopt;
 
+    // IPv4 Frame
     if (header.type == EthernetHeader::TYPE_IPv4) {
         InternetDatagram datagram;
 
+        // when cannot parse the payload of frame
         if (datagram.parse(frame.payload()) != ParseResult::NoError)
             return nullopt;
 
+        // return successfully parsed datagram
         return datagram;
     } else {
+        // ARP Frame
         ARPMessage message;
 
+        // when cannot parse the payload of frame
         if (message.parse(frame.payload()) != ParseResult::NoError)
             return nullopt;
 
+        // when target ip is not correct
         if (message.target_ip_address != this->_ip_address.ipv4_numeric())
             return nullopt;
 
         const EthernetAddress mac = message.sender_ethernet_address;
         const uint32_t ip = message.sender_ip_address;
 
+        // add entry to ARP table
         this->_ARP_table[ip] = {mac, ARPConfig::DEFAULT_ARP_TTL};
 
+        // reply for ARP request
         if (message.opcode == ARPMessage::OPCODE_REQUEST)
             this->_frames_out.push(this->_generate_frame(ip, this->_generate_ARPMessage(ip, ARPMessage::OPCODE_REPLY)));
 
+        // prune pending ARP requests for received ip address
         for (auto it = this->_ARP_pending_ip_addresses.begin(); it != this->_ARP_pending_ip_addresses.end();) {
             if (it->first == ip)
                 it = this->_ARP_pending_ip_addresses.erase(it);
@@ -90,6 +104,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
                 it++;
         }
 
+        // prune pending datagrams due to ARP requests for received ip address
         for (auto it = this->_ARP_pending_datagrams.begin(); it != this->_ARP_pending_datagrams.end();) {
             if (it->first == ip) {
                 this->_frames_out.push(this->_generate_frame(it->first, it->second));
@@ -105,24 +120,30 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) {
     for (auto &e : this->_ARP_pending_ip_addresses) {
+        // when pending ARP requests are timeout
+        // 1. re-send ARP messages
+        // 2. reset the TTL of ARP pending
         if (e.second <= ms_since_last_tick) {
             this->_frames_out.push(
                 this->_generate_frame(e.first, this->_generate_ARPMessage(e.first, ARPMessage::OPCODE_REQUEST)));
             e.second = ARPConfig::DEFAULT_ARP_TIMEOUT;
         } else
-            e.second -= ms_since_last_tick;
+            e.second -= ms_since_last_tick;     // update remaining TTL when no timeout
     }
 
     for (auto it = this->_ARP_table.begin(); it != this->_ARP_table.end();) {
+        // when ARP table entry is timeout, erase
         if (it->second.second <= ms_since_last_tick)
             it = this->_ARP_table.erase(it);
         else {
+            // when no timeout, update remaining TTL
             it->second.second -= ms_since_last_tick;
             it++;
         }
     }
 }
 
+//! \brief generate ARPMessage
 ARPMessage NetworkInterface::_generate_ARPMessage(const uint32_t target_ip_address, const uint16_t opcode) {
     ARPMessage message;
 
@@ -138,6 +159,7 @@ ARPMessage NetworkInterface::_generate_ARPMessage(const uint32_t target_ip_addre
     return message;
 }
 
+//! \brief build header of a frame
 void NetworkInterface::_build_frame_header(EthernetHeader &header,
                                            const uint32_t &dst_ip_address,
                                            const uint16_t &type) {
@@ -146,6 +168,7 @@ void NetworkInterface::_build_frame_header(EthernetHeader &header,
     header.dst = this->_is_ip_known(dst_ip_address) ? this->_ARP_table[dst_ip_address].first : ETHERNET_BROADCAST;
 }
 
+//! \brief generate frame using InternetDatagram
 EthernetFrame NetworkInterface::_generate_frame(const uint32_t dst_ip_address, InternetDatagram datagram) {
     EthernetFrame frame;
     this->_build_frame_header(frame.header(), dst_ip_address, EthernetHeader::TYPE_IPv4);
@@ -153,6 +176,7 @@ EthernetFrame NetworkInterface::_generate_frame(const uint32_t dst_ip_address, I
     return frame;
 }
 
+//! \brief generate frame using ARPMessage
 EthernetFrame NetworkInterface::_generate_frame(const uint32_t dst_ip_address, ARPMessage message) {
     EthernetFrame frame;
     this->_build_frame_header(frame.header(), dst_ip_address, EthernetHeader::TYPE_ARP);

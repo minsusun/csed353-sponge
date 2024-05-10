@@ -103,6 +103,8 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
             else it++;
         }
     }
+
+    return nullopt;
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method

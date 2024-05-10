@@ -1,6 +1,7 @@
 #ifndef SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 #define SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 
+#include "arp_message.hh"
 #include "ethernet_frame.hh"
 #include "tcp_over_ip.hh"
 #include "tun.hh"

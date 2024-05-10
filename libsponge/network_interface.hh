@@ -8,6 +8,16 @@
 #include <optional>
 #include <queue>
 
+//! \brief Config for ARP
+class ARPConfig {
+  public:
+    static constexpr size_t DEFAULT_ARP_TTL = 30000;
+    static constexpr size_t DEFAULT_ARP_TIMEOUT = 5000;
+
+    size_t arp_ttl = DEFAULT_ARP_TTL;
+    size_t arp_timeout = DEFAULT_ARP_TIMEOUT;
+};
+
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
 

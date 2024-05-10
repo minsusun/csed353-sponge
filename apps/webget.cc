@@ -12,7 +12,8 @@ void get_URL(const string &host, const string &path) {
 
     // connection to host
     // TCPSocket socket;
-    CS144TCPSocket socket;
+    // CS144TCPSocket socket;
+    FullStackSocket socket;
     socket.connect(Address(host, "http"));
     socket.write("GET " + path + " HTTP/1.1" + "\r\n");
     socket.write("Host: " + host + "\r\n");

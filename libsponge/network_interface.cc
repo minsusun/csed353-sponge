@@ -125,7 +125,7 @@ void NetworkInterface::tick(const size_t ms_since_last_tick) {
 
     for(auto it = this->_ARP_table.begin(); it != this->_ARP_table.end(); ) {
         if(it->second.second <= ms_since_last_tick)
-            this->_ARP_table.erase(it);
+            it = this->_ARP_table.erase(it);
         else {
             it->second.second -= ms_since_last_tick;
             it++;

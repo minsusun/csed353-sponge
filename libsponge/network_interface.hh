@@ -6,10 +6,10 @@
 #include "tcp_over_ip.hh"
 #include "tun.hh"
 
+#include <list>
+#include <map>
 #include <optional>
 #include <queue>
-#include <map>
-#include <list>
 
 //! \brief Config for ARP
 class ARPConfig {
@@ -53,9 +53,9 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
-    std::map<uint32_t, std::pair<EthernetAddress, size_t>> _ARP_table{};          // ip_address: {MAC address, TTL}
-    std::list<std::pair<uint32_t, size_t>> _ARP_pending_ip_addresses{};           // {ip_address, TTL}
-    std::list<std::pair<uint32_t, InternetDatagram>> _ARP_pending_datagrams{};    // {ip_address, datagram}
+    std::map<uint32_t, std::pair<EthernetAddress, size_t>> _ARP_table{};        // ip_address: {MAC address, TTL}
+    std::list<std::pair<uint32_t, size_t>> _ARP_pending_ip_addresses{};         // {ip_address, TTL}
+    std::list<std::pair<uint32_t, InternetDatagram>> _ARP_pending_datagrams{};  // {ip_address, datagram}
 
     bool _is_ip_known(const uint32_t &ip) { return this->_ARP_table.find(ip) != this->_ARP_table.end(); }
 

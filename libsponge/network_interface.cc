@@ -80,6 +80,8 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         const EthernetAddress mac = message.sender_ethernet_address;
         const uint32_t ip = message.sender_ip_address;
 
+        this->_ARP_table[ip] = {mac, ARPConfig::DEFAULT_ARP_TTL};
+
         if(message.opcode == ARPMessage::OPCODE_REQUEST)
             this->_frames_out.push(
                 this->_generate_frame(
@@ -87,8 +89,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
                     this->_generate_ARPMessage(ip, ARPMessage::OPCODE_REPLY)
                 )
             );
-
-        this->_ARP_table[ip] = {mac, ARPConfig::DEFAULT_ARP_TTL};
 
         for(auto it = this->_ARP_pending_ip_addresses.begin(); it != this->_ARP_pending_ip_addresses.end(); ) {
             if(it->first == ip) it = this->_ARP_pending_ip_addresses.erase(it);

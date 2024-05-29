@@ -28,7 +28,7 @@ Solo portion:
     A: Yes. (SHA256SUM for randomly generated file: 8a3eb7ffe3f44d4deb9946bc66f5e2955c90fea20fa31d70c7fed803c8297c2b)
 
     Q: Please describe what code changes, if any, were necessary to pass these steps.
-    A: There was no code changes made.
+    A: 
 ]
 
 Group portion:

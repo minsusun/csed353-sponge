@@ -1,0 +1,15 @@
+services:
+  sponge:
+    # you should execute shell on this container
+    # e.g. docker exec --rm -it /bin/bash sponge
+    image: minsusun/sponge:latest
+    build: .
+    container_name: "sponge"
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    privileged: true
